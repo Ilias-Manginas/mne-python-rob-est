@@ -75,6 +75,13 @@ from .utils import (
     warn,
 )
 
+try:
+    from robpy.covariance import FastMCD, DetMCD, KendallTau, CellMCD, OGK
+    HAVE_ROBPY = True
+except ImportError:
+    HAVE_ROBPY = False
+
+
 
 def _check_covs_algebra(cov1, cov2):
     if cov1.ch_names != cov2.ch_names:
@@ -794,6 +801,12 @@ def _check_method_params(
         "pca",
         "factor_analysis",
         "shrinkage",
+        "ogk",
+        "fastmcd",
+        "detmcd",
+        "kendalltau",
+        "cellmcd",
+        "mcd",
     )
     _method_params = {
         "empirical": {"store_precision": False, "assume_centered": True},
@@ -812,6 +825,12 @@ def _check_method_params(
         },
         "pca": {"iter_n_components": None},
         "factor_analysis": {"iter_n_components": None},
+        "ogk": {"store_precision": False, "assume_centered": True, "reweighting_beta": 0.9},
+        "fastmcd": {"store_precision": False, "assume_centered": True, "alpha": None},
+        "detmcd": {"alpha": None},
+        "kendalltau": {"store_precision": False, "assume_centered": True},
+        "cellmcd": {"alpha": 0.75},
+        "mcd": {"store_precision": False, "assume_centered": True, "support_fraction": None},
     }
 
     for ch_type in _DATA_CH_TYPES_SPLIT:
@@ -838,6 +857,13 @@ def _check_method_params(
 
     if not isinstance(method, list | tuple):
         method = [method]
+
+    robpy_methods = {"ogk", "fastmcd", "detmcd", "kendalltau", "cellmcd"}
+    if not HAVE_ROBPY and any(m in robpy_methods for m in method):
+        raise ValueError(
+            "robpy is not installed. To use robust covariance methods, "
+            "please install robpy: pip install robpy"
+        )
 
     if not all(k in accepted_methods for k in method):
         raise ValueError(
@@ -1410,6 +1436,47 @@ def _compute_covariance_auto(
                 fa.fit(data_)
                 estimator_cov_info.append((fa, fa.get_covariance(), _info))
                 del fa
+            elif method_ == "ogk":
+                if not HAVE_ROBPY:
+                    raise ValueError("robpy is not installed")
+                est = OGK(**mp)
+                est.fit(data_)
+                estimator_cov_info.append((est, est.covariance_, _info))
+                del est
+            elif method_ == "fastmcd":
+                if not HAVE_ROBPY:
+                    raise ValueError("robpy is not installed")
+                est = FastMCD(**mp)
+                est.fit(data_)
+                estimator_cov_info.append((est, est.covariance_, _info))
+                del est
+            elif method_ == "detmcd":
+                if not HAVE_ROBPY:
+                    raise ValueError("robpy is not installed")
+                est = DetMCD(**mp)
+                est.fit(data_)
+                estimator_cov_info.append((est, est.covariance_, _info))
+                del est
+            elif method_ == "kendalltau":
+                if not HAVE_ROBPY:
+                    raise ValueError("robpy is not installed")
+                est = KendallTau()
+                est.fit(data_)
+                estimator_cov_info.append((est, est.covariance_, _info))
+                del est
+            elif method_ == "cellmcd":
+                if not HAVE_ROBPY:
+                    raise ValueError("robpy is not installed")
+                est = CellMCD(**mp)
+                est.fit(data_)
+                estimator_cov_info.append((est, est.covariance_, _info))
+                del est
+            elif method_ == "mcd":
+                from sklearn.covariance import MinCovDet
+                est = MinCovDet(**mp)
+                est.fit(data_)
+                estimator_cov_info.append((est, est.covariance_, _info))
+                del est
             else:
                 raise ValueError("Oh no! Your estimator does not have a .fit method")
             logger.info("Done.")
