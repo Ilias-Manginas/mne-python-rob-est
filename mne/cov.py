@@ -806,7 +806,6 @@ def _check_method_params(
         "detmcd",
         "kendalltau",
         "cellmcd",
-        "mcd",
     )
     _method_params = {
         "empirical": {"store_precision": False, "assume_centered": True},
@@ -830,7 +829,6 @@ def _check_method_params(
         "detmcd": {"alpha": None},
         "kendalltau": {"store_precision": False, "assume_centered": True},
         "cellmcd": {"alpha": 0.75},
-        "mcd": {"store_precision": False, "assume_centered": True, "support_fraction": None},
     }
 
     for ch_type in _DATA_CH_TYPES_SPLIT:
@@ -1468,12 +1466,6 @@ def _compute_covariance_auto(
                 if not HAVE_ROBPY:
                     raise ValueError("robpy is not installed")
                 est = CellMCD(**mp)
-                est.fit(data_)
-                estimator_cov_info.append((est, est.covariance_, _info))
-                del est
-            elif method_ == "mcd":
-                from sklearn.covariance import MinCovDet
-                est = MinCovDet(**mp)
                 est.fit(data_)
                 estimator_cov_info.append((est, est.covariance_, _info))
                 del est
